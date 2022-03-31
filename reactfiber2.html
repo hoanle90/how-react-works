@@ -1,0 +1,223 @@
+<html>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <body id="root"></body>
+  <style>
+    body {
+      background-color: #00a6dd;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .test {
+      width: 500px;
+      height: 500px;
+      background-color: lightgreen;
+    }
+    .wrapper {
+      display: flex;
+      width: 50vw;
+      height: 50vh;
+      background-color: lightsalmon;
+    }
+    #wrapper {
+      color: red;
+    }
+  </style>
+  <script type="text/babel">
+    /*
+    This example also help to create DOM from Object , but we make it a little bit more complicate.
+    These element and element2 below actually the same result. Now our job is do something similar to it.
+
+     const element = (
+      <div id="foo">
+        <a>bar</a>
+        <b />
+      </div>
+    )
+
+      let element2 = React.createElement(
+      "div",
+      {
+        id: "foo",
+      },
+      React.createElement("a", null, "bar2"),
+      React.createElement("b", null)
+    )
+
+    We need Babel support here so I include: 
+    - <script src="https://unpkg.com/@babel/standalone/babel.min.js">
+    - /** @jsx Hoan.createElement *
+    This mean:  hey Babel see that JSX ?? , convert for me type, props, children.
+
+    Let try with testBabel and /** @jsx Hoan.testBabel * first, just simple console.log to see what babel give us
+    => every JSX <div> , <span> , <h1> will print out type, props, children in testBabel
+
+    Next thing is write createElement , Babel just do 80% of the job, we just need to return to correct format:
+    return {
+        type,
+        props: {
+          ...props,
+          children: children.map((child) =>
+            typeof child === "object" ? child : createTextElement(child)
+          ),
+        },
+      }
+    
+      Now let log out:
+
+      const element2 = (
+      <div id="wrapper" classHoan="abc">
+        <span>
+          <h1 title="hello123">hello</h1>
+        </span>
+      </div>
+      )
+
+      console.log("element2", element2)
+      we have an object similar to React.createElement , right ? 
+
+      The question is how can we build the DOM from that object above ?
+      just do recursive with 3 steps:
+      - If it a text => document.createTextNode, otherwise, document.createElement
+      - Add attributes: id, title, class, ... for the DOM just create in step 1
+      - repeat those step for the list of child
+
+      And we done, oh wait attribute "class" not work , why ???
+      Because some keyword like class or for are the reserved keyword ( you can read here https://www.geeksforgeeks.org/why-react-uses-classname-over-class-attribute/#:~:text=Explanation%3A%20The%20only%20reason%20behind,className%20instead%20of%20class%20attribute.)
+      so we need to change it. I use classHoan for it, you can change any name you want :D
+      #FYI: Actually undefined was not reserved in old browser,
+      so if var undefined = 'something else' the undefined now is 'something else' and make undefined might not work as you expected
+      to fix that , use void(0) . var a = undefined same with var a = void(0)
+
+    */
+   
+   
+    function testBabel(type, props, ...children) {
+      console.log("this is test babel", type, props, ...children)
+      return "hoan"
+    }
+
+    function createElement(type, props, ...children) {
+      // console.log("children", children)
+      console.log("createElement", type, props, children)
+
+      return {
+        type,
+        props: {
+          ...props,
+          children: children.map((child) =>
+            typeof child === "object" ? child : createTextElement(child)
+          ),
+        },
+      }
+    }
+
+    function createTextElement(text) {
+      return {
+        type: "TEXT_ELEMENT",
+        props: {
+          nodeValue: text,
+          children: [],
+        },
+      }
+    }
+    
+    function render(element, container) {
+      console.log("render", element)
+
+      const dom =
+        element.type == "TEXT_ELEMENT"
+          ? document.createTextNode(element.props.nodeValue)
+          : document.createElement(element.type)
+
+      const isProperty = (key) => key !== "children"
+      //debugger
+      Object.keys(element.props)
+        .filter(isProperty)
+        .forEach((name) => {
+          if(name ==='classHoan'){
+            dom.classList.add(element.props[name])
+          }
+          dom[name] = element.props[name]
+        })
+      element.props.children.forEach((child) => render(child, dom)) // render (child, dom) h1-> span
+      container.appendChild(dom)
+    }
+    // <div><span><h1></h1></span><div>
+    // => div
+    // => div <- span
+    // => div <- span <- h1
+    const Hoan = {
+      createElement,
+      render,
+      testBabel,
+    }
+    // const element = Hoan.createElement(
+    //   "div",
+    //   { id: "foo" },
+    //   Hoan.createElement("a", null, "bar"),
+    //   Hoan.createElement("b")
+    // )
+    /** @jsx Hoan.createElement */
+    const element2 = (
+      <div id="wrapper" classHoan="abc">
+        <span>
+          <h1 title="hello123">hello</h1>
+        </span>
+      </div>
+    )
+
+    console.log("element2", element2)
+
+    // const element = (
+    //   <div id="foo">
+    //     <a>bar</a>
+    //     <b />
+    //   </div>
+    // )
+    // console.log("element", element)
+    //  const for ....
+
+    const element123 = (
+      <div classHoan="wrapper">
+        <div>div</div>
+        <h1>h1</h1>
+        <span>span</span>
+        <ul>
+          <li>1</li>
+          <li>2</li>
+          <li>3</li>
+        </ul>
+        <table classHoan="table">
+          <thead title="table" id="idTable">
+            <tr>
+              <td>Name</td>
+              <td>year</td>
+              <td>age</td>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Heu</td>
+              <td>123</td>
+              <td>1</td>
+            </tr>
+            <tr>
+              <td>Unu</td>
+              <td>11</td>
+              <td>44</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    )
+    // console.log("element2", element123)
+    // console.log("element", element)
+    const container = document.getElementById("root")
+    // Hoan.render(element123, container)
+    //createElement("h1", {}, null)
+    Hoan.render(element2, container)
+
+    // console.log("element2", <div></div>)
+  </script>
+</html>

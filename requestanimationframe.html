@@ -1,0 +1,106 @@
+<html>
+  <body>
+    <div><h1 id="h1_id">1</h1></div>
+    <div onclick="normal()" id="button">Click Normal</div>
+    <div onclick="animation()" id="button">Click Animation</div>
+    <div onclick="normalStyle()" id="button">normal move</div>
+    <div onclick="animationStyle()" id="button">animation move</div>
+  </body>
+  <style>
+    body {
+      background-color: #00a6dd;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+    div {
+      display: block;
+    }
+    h1 {
+      font-size: 72px;
+    }
+  </style>
+  
+  <script>
+    /*
+    Try this example + performance profiling to see the different between:
+    - callstack
+    - setTimeout
+    - requestAnimationFrame
+    
+
+    */
+    let h1 = document.getElementById("h1_id")
+    let button = document.getElementById("button")
+    let j = 0
+
+    const normal = () => {
+      for (let i = 0; i < 1000; i++) {
+        // h1.innerHTML = i;
+        // console.log(i, h1.innerHTML);
+        setTimeout(() => {
+          h1.innerHTML = i
+          console.log(i, h1.innerHTML)
+        }, 100 * i)
+      }
+    }
+
+    const normalStyle = () => {
+      for (let i = 0; i < 100; i++) {
+        h1.innerHTML = i
+        h1.style.transform = "translateX(" + i + "px)"
+        h1.style.color = randomColor()
+        console.log("normalStyle", i)
+      }
+      console.log("123")
+    }
+
+    // why can not see 50 ?
+    // 1->99
+
+    const animation = () => {
+      j = 0
+      window.requestAnimationFrame(setHtml)
+    }
+
+    const animationStyle = () => {
+      j = 0
+      window.requestAnimationFrame(styleHtml)
+    }
+
+    const setHtml = () => {
+      h1.innerHTML = j
+      j++
+      if (j < 1000) {
+        window.requestAnimationFrame(setHtml)
+      }
+    }
+
+    const styleHtml = () => {
+      h1.innerHTML = j
+      h1.style.transform = "translateX(" + j * 2 + "px)"
+      //   h1.style.color = randomColor();
+      j++
+      if (j < 100) {
+        window.requestAnimationFrame(styleHtml)
+      }
+    }
+
+    const sleep = (ms) => {
+      return new Promise((resolve) => setTimeout(resolve, ms))
+    }
+    const randomColor = () => Math.floor(Math.random() * 16777215).toString(16)
+
+    /*
+        js -> callstack 2s-> result 999 -> paint -> html -> js -> callstack
+        js -> callstack
+        setTimeout
+        callstack queue marcotask
+        js -> callstack -> let temp = result marcotask -> paint -> html -> callstack -> let temp = result marcotask -> paint -> html
+        requestAnimationFrame -> callstack 16ms -> force html paint
+
+        
+        */
+  </script>
+</html>

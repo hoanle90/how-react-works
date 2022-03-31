@@ -1,0 +1,476 @@
+<html>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <img src="fiber.png" />
+  <body id="root"></body>
+  <style>
+    img {
+      width: 300px;
+    }
+    body {
+      background-color: #00a6dd;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .test {
+      width: 500px;
+      height: 500px;
+      background-color: lightgreen;
+    }
+    .counter-wapper {
+      display: flex;
+      flex-direction: column;
+    }
+    .counter-wapper div {
+      margin: 10px;
+    }
+  </style>
+  
+  <script type="text/babel">
+    /* 
+    #0 
+    Please read here first: https://github.com/acdlite/react-fiber-architecture
+    This example is help you to understand fiber. We need 2 things:
+    - requestIdleCallback this function give us time remaining before draw next frame and draw frame every 16.6ms
+    - a link list, we call it fiber tree, so it help us keep track each node , what is the next node to do
+
+    #FYI: react actually implement function which do similar thing to requestIdleCallback, 
+    it not use requestIdleCallback. Read more https://github.com/facebook/react/issues/13206#issuecomment-418923831
+
+    Now start from workLoop function where everything begin
+
+    */
+    function createDom(fiber) {
+      const dom =
+        fiber.type == "TEXT_ELEMENT"
+          ? document.createTextNode("")
+          : document.createElement(fiber.type)
+
+      updateDom(dom, {}, fiber.props)
+
+      return dom
+    }
+    const isEvent = (key) => key.startsWith("on")
+    const isProperty = (key) => key !== "children" && !isEvent(key)
+    const isNew = (prev, next) => (key) => prev[key] !== next[key]
+    const isGone = (prev, next) => (key) => !(key in next)
+    function updateDom(dom, prevProps, nextProps) {
+      //Remove old or changed event listeners
+      Object.keys(prevProps)
+        .filter(isEvent)
+        .filter(
+          (key) => !(key in nextProps) || isNew(prevProps, nextProps)(key)
+        )
+        .forEach((name) => {
+          const eventType = name.toLowerCase().substring(2)
+          dom.removeEventListener(eventType, prevProps[name])
+        })
+
+      // Remove old properties
+      Object.keys(prevProps)
+        .filter(isProperty)
+        .filter(isGone(prevProps, nextProps))
+        .forEach((name) => {
+          dom[name] = ""
+        })
+
+      // Set new or changed properties
+      Object.keys(nextProps)
+        .filter(isProperty)
+        .filter(isNew(prevProps, nextProps))
+        .forEach((name) => {
+          dom[name] = nextProps[name]
+        })
+
+      // Add event listeners
+      Object.keys(nextProps)
+        .filter(isEvent)
+        .filter(isNew(prevProps, nextProps))
+        .forEach((name) => {
+          const eventType = name.toLowerCase().substring(2)
+          dom.addEventListener(eventType, nextProps[name])
+        })
+    }
+    function createElement(type, props, ...children) {
+      return {
+        type,
+        props: {
+          ...props,
+          children: children.map((child) =>
+            typeof child === "object" ? child : createTextElement(child)
+          ),
+        },
+      }
+    }
+
+    function createTextElement(text) {
+      return {
+        type: "TEXT_ELEMENT",
+        props: {
+          nodeValue: text,
+          children: [],
+        },
+      }
+    }
+
+    //#5
+    // We already have effect list, we know exactly what fiber node need to update/create/delete , let do it
+    function commitRoot() {
+      deletions.forEach(commitWork)
+      console.log("nextUnitOfWork AFTER", wipRoot)
+      commitWork(wipRoot.child)
+      // after finish committing, the workInProcessRoot become currentRoot
+      currentRoot = wipRoot
+      wipRoot = null
+    }
+
+    function commitWork(fiber) {
+      if (!fiber) {
+        return
+      }
+      // console.log("fiber", fiber)
+      let domParentFiber = fiber.parent
+      while (!domParentFiber.dom) {
+        domParentFiber = domParentFiber.parent
+      }
+
+      const domParent = domParentFiber.dom
+      //console.log("fiber.effectTag", fiber.effectTag)
+      if (fiber.effectTag === "PLACEMENT" && fiber.dom != null) {
+        domParent.appendChild(fiber.dom)
+      } else if (fiber.effectTag === "UPDATE" && fiber.dom != null) {
+        updateDom(fiber.dom, fiber.alternate.props, fiber.props)
+      } else if (fiber.effectTag === "DELETION") {
+        commitDeletion(fiber, domParent)
+      }
+
+      commitWork(fiber.child)
+      commitWork(fiber.sibling)
+    }
+
+    function commitDeletion(fiber, domParent) {
+      if (fiber.dom) {
+        domParent.removeChild(fiber.dom)
+      } else {
+        commitDeletion(fiber.child, domParent)
+      }
+    }
+    // 
+    function render(element, container) {
+      wipRoot = {
+        dom: container,
+        props: {
+          children: [element],
+        },
+        alternate: currentRoot,
+      }
+      deletions = []
+      nextUnitOfWork = wipRoot
+      console.log("nextUnitOfWork BEFORE", wipRoot)
+      
+    }
+
+    let nextUnitOfWork = null
+    let wipRoot = null
+    let currentRoot = null
+    let deletions = null
+
+    /*
+     #1
+      so basically, this function always run.
+      There are 2 phases:
+      - Render phase (in nextUnitOfWork = performUnitOfWork ) build, diff the fiber tree => create/update dom at fiber tree and add effect tag 
+      - Commit phase. Where all fiber tree was build , now just apply the effect to the DOM
+
+    */
+    function workLoop(deadline) {
+      let shouldYield = false
+      // while (nextUnitOfWork ... mean still have work to done, so continue to do it
+      while (nextUnitOfWork && !shouldYield) {
+        nextUnitOfWork = performUnitOfWork(nextUnitOfWork) // return next unit of work ,might be child or sibling ( no parent here, because we go from top to bottom)
+        console.log('nextUnitOfWork', nextUnitOfWork)
+        // check we have enough time or not
+        shouldYield = deadline.timeRemaining() < 1
+      }
+      // if (!nextUnitOfWork ... mean okay, no more work. We reach at root, everything is ready , let commit it
+      if (!nextUnitOfWork && wipRoot) {
+        commitRoot()
+      }
+      //
+      requestIdleCallback(workLoop)
+    }
+
+    requestIdleCallback(workLoop) // 16ms
+    // fiber tree link list node  UnitOfWork
+    // fiberNode
+    // nodeA <-> nodeB <-> nodeC <->nodeD
+
+    // #4
+    // This function is create a fiber node for its CHILDREN
+
+    function reconcilerChildren(wipFiber, elements) {
+      let index = 0
+      let oldFiber = wipFiber.alternate && wipFiber.alternate.child
+      let prevSibling = null
+      
+      // build the fiber tree
+      while (index < elements.length || oldFiber != null) {
+        const element = elements[index]
+        // diff is there any different 
+        // 2 fiber tree 
+        // wip current 
+        // finish wip => current
+        // current => wip
+
+        // check is the same type 
+        // has old child, has new child and both type of old and new is the same
+        const sameType = oldFiber && element && element.type == oldFiber.type
+        
+        let newFiber = null
+        // if same type:
+        // "dom: oldFiber.dom"  use the old dom
+        // "alternate: oldFiber" link to the old fiber
+        // effectTag: "UPDATE" add effectTag UPDATE, mark this node need to update
+        if (sameType) {
+          newFiber = {
+            type: oldFiber.type,
+            props: element.props,
+            parent: wipFiber,
+            dom: oldFiber.dom,
+            alternate: oldFiber,
+            effectTag: "UPDATE",
+          }
+        }
+        // if has new child but not same type or don't have old child, let create new one
+        // "dom: null" , dom is null, will create at updateHostComponent in next time it run performUnitOfWork
+        // "alternate: null" , it a new node, so there is no old node to link
+        // effectTag: "PLACEMENT" , mark this one is new , need to create
+        if (element && !sameType) {
+          newFiber = {
+            type: element.type,
+            props: element.props,
+            parent: wipFiber,
+            dom: null,
+            alternate: null,
+            effectTag: "PLACEMENT",
+          }
+        }
+        // if has old child but not new child, mean delete
+        // just mark at delete, no need to create fiber node for it because we delete it anyway
+        if (oldFiber && !sameType) {
+          oldFiber.effectTag = "DELETION"
+          deletions.push(oldFiber)
+        }
+
+        // When finish one node, let move to its sibling by oldFiber = oldFiber.sibling and increase index++
+        if (oldFiber) {
+          oldFiber = oldFiber.sibling
+        }
+        // if index === 0 , mean it a first child, set child = newFiber, otherwise , it's a sibling 
+        if (index === 0) {
+          wipFiber.child = newFiber
+        } else if (element) {
+          prevSibling.sibling = newFiber
+        }
+
+        prevSibling = newFiber
+        // continue to loop over the list of children 
+        index++
+      }
+    }
+
+    // #2
+    // This function is combine beginWork and completeWork
+    // This is algo to go to every fiber nodes of a fiber tree. 
+    // Top to bottom to create node for child
+    // bottom to top to create sibling
+    function performUnitOfWork(fiber) {
+      // will call reconcilerChildren to Create a fiber node for it's children
+      const isFunctionComponent = fiber.type instanceof Function
+      if (isFunctionComponent) {
+        updateFunctionComponent(fiber)
+      } else {
+        updateHostComponent(fiber)
+      }
+      // keep go to bottom until there is no child
+      if (fiber.child) {
+        return fiber.child
+      }
+      // bottom to top to search for sibling
+      let nextFiber = fiber
+      while (nextFiber) {
+        if (nextFiber.sibling) {
+          return nextFiber.sibling
+        }
+        nextFiber = nextFiber.parent
+      }
+    }
+
+    let wipFiber = null
+    let hookIndex = null
+
+    function updateFunctionComponent(fiber) {
+      wipFiber = fiber
+
+      hookIndex = 0
+      wipFiber.hooks = []
+      // div => 10 hooks
+      // if(abc){useState}
+
+      const children = [fiber.type(fiber.props)]
+      reconcilerChildren(fiber, children)
+    }
+
+    // #3
+    function updateHostComponent(fiber) {
+      // check if we have a real dom node, if not create and assign to fiber.dom 
+      if (!fiber.dom) {
+        fiber.dom = createDom(fiber)
+      }
+      reconcilerChildren(fiber, fiber.props.children)
+    }
+
+    // From this line below you can delete, and create your own play ground
+    
+    function useState(initial) {
+      const oldHook =
+        wipFiber.alternate &&
+        wipFiber.alternate.hooks &&
+        wipFiber.alternate.hooks[hookIndex]
+      const hook = {
+        state: oldHook ? oldHook.state : initial,
+        queue: [],
+      }
+
+      const actions = oldHook ? oldHook.queue : []
+
+      actions.forEach((action) => {
+        //console.log("triiger action set", action)
+        hook.state = action(hook.state)
+      })
+
+      const setState = (action) => {
+        hook.queue.push(action)
+        wipRoot = {
+          dom: currentRoot.dom,
+          props: currentRoot.props,
+          alternate: currentRoot,
+        }
+        //console.log("wipRoot", wipRoot)
+        nextUnitOfWork = wipRoot
+        deletions = []
+      }
+      wipFiber.hooks.push(hook)
+      hookIndex++
+      return [hook.state, setState]
+    }
+
+    
+    function useEffect(callback, deps) {
+      const oldHook =
+        wipFiber.alternate &&
+        wipFiber.alternate.hooks &&
+        wipFiber.alternate.hooks[hookIndex]
+      const hook = {
+        deps: oldHook ? oldHook.deps : deps,
+      }
+      let oldDeps = hook
+      console.log("hook", hook)
+      let hasChanged = true
+      if (oldDeps) {
+        hasChanged = deps.some((d, index) => !Object.is(d, oldDeps[index]))
+      }
+      if (hasChanged) {
+        callback()
+      }
+      // const hook = {
+      //   state: oldHook ? oldHook.state : initial,
+      //   queue: [],
+      // }
+      wipFiber.hooks.push(hook)
+      hookIndex++
+      console.log("useEffect", oldHook)
+    }
+
+    const Hoan = {
+      createElement,
+      render,
+      useState,
+      useEffect,
+    }
+
+    /** @jsx Hoan.createElement */
+    const element = (
+      <div id="foo">
+        <a>bar</a>
+        <b />
+      </div>
+    )
+
+    const elementReal = (
+      <div>
+        <h1>
+          <p></p>
+          <a />
+        </h1>
+        <h2></h2>
+      </div>
+    )
+    const handleClick = () => {
+      console.log("aaaa")
+    }
+    const elementAction = <div onClick={handleClick}>Click</div>
+  
+    function App(props) {
+      return <h1>Hi {props.name}</h1>
+    }
+    
+    /** @jsx Hoan.createElement */
+    function Counter() {
+      console.log("re-render")
+      const [count, setCount] = Hoan.useState(1)
+      const [name, setName] = Hoan.useState("heu")
+      const increase = () => setCount((c) => c + 1)
+      const decrease = () => setCount((c) => c - 1)
+      
+
+      const handleName = (e) => {
+        setName((name) => e.target.value)
+      }
+      return (
+        <span className="counter-wapper">
+          <div className='test123'>
+            <h1>Count: {count}</h1>
+            <button onClick={increase}>Increase</button>
+            <button onClick={decrease}>Decrease</button>
+          </div>
+          <div>
+            <div>Hello {name}</div>
+            <div>
+              <input onKeyUp={handleName} />
+            </div>
+          </div>
+        </span>
+      )
+    }
+    console.log("Counter", Counter)
+    const test = <div>hello</div>
+    console.log("elementReal element", elementReal)
+    // const elementFunction = <App name="foo" />
+    // console.log("elementFunction", elementFunction)
+    const container = document.getElementById("root")
+    // Hoan.render(<Counter />, container)
+    Hoan.render(elementReal, container)
+    // setTimeout(() => {
+    //   wipRoot = {
+    //     dom: currentRoot.dom,
+    //     props: currentRoot.props,
+    //     alternate: currentRoot,
+    //   }
+    //   nextUnitOfWork = wipRoot
+    // }, 1000)
+    //createElement("h1", {}, null)
+    // 60frames/s
+  </script>
+</html>
+

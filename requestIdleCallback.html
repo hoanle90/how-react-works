@@ -1,0 +1,67 @@
+<html>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <body id="root"></body>
+  <style>
+    body {
+      background-color: #00a6dd;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .test {
+      width: 500px;
+      height: 500px;
+      background-color: lightgreen;
+    }
+    div {
+      min-width: 30px;
+      min-height: 30px;
+      background-color: lightsalmon;
+      margin: 10px;
+    }
+  </style>
+  <script type="text/babel">
+    let nextUnitOfWork = null
+    let i = 0
+    /* Try this example, also do performance profiling and see how requestIdleCallback work, who it better than callstack:
+    - the requestIdleCallback give us the deadline.timeRemaining(), so we can know how much time that we have before next paint
+    */
+    // requestIdleCallback give time + paint every 16ms
+  
+    
+    function workLoop(deadline) {
+      console.log("workLoop", deadline.timeRemaining())
+      let shouldYield = false
+      // 16ms
+      while (!shouldYield && i < 10000) {
+        performUnitOfWork(nextUnitOfWork) 
+
+        shouldYield = deadline.timeRemaining() < 1
+      }
+      window.requestIdleCallback(workLoop) // => paint lai 1 div
+    }
+    window.requestIdleCallback(workLoop) // 16ms
+    // 16 => deadline.timeRemaining()
+    // 6ms
+    // 10
+    // 0 -1
+    // -80
+    // 102ms
+
+    // 16ms
+    // 1ms have 15ms deadline.timeRemaining()
+    // 9ms 5ms
+    // 5ms deadline.timeRemaining()
+
+    // 16ms
+
+    function performUnitOfWork(fiber) {
+      console.log(123)
+      i++
+      const container = document.getElementById("root")
+      const node = document.createElement("div")
+      container.appendChild(node)
+    }
+  </script>
+</html>

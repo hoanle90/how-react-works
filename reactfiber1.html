@@ -1,0 +1,62 @@
+<html>
+  <body id="root"></body>
+  <style>
+    body {
+      background-color: #00a6dd;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  </style>
+  <script>
+    /*
+    This example is how to build simple DOM from a simple Object.
+    You can see we have:
+    const element = {
+      type: "h1",
+      props: {
+        title: "test",
+        children: "hello world",
+      },
+    }
+
+    We need to do 3 things:
+
+    - Create a dom from type , using native javascript document.createElement() to do that
+    - Create a text node , using document.createTextNode("") then add the text
+    - Create an attribute title. node["title"] = element.props.title
+
+    So after finish 3 steps above we can have a real DOM from the object
+
+    */
+    // let element = <h1 title='test'>Hello world<h1>
+    // let element = React.createElement(
+    // 'h1',
+    // {title: 'foo'},
+    // 'Hello world'
+    // )
+    const element = {
+      type: "h1",
+      props: {
+        title: "test",
+        children: "hello world",
+      },
+    }
+    //component A ={render} => {}
+
+    console.log("element", element)
+    const container = document.getElementById("root")
+    // create h1
+    const node = document.createElement(element.type) // p
+
+    console.log("node", node)
+    node["title"] = element.props.title
+    // dom[name] = element.props[name]
+
+    const text = document.createTextNode("")
+    // console.log("text")
+    text["nodeValue"] = element.props.children
+    node.appendChild(text)
+    container.appendChild(node)
+  </script>
+</html>
