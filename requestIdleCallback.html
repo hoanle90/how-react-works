@@ -28,16 +28,30 @@
     - the requestIdleCallback give us the deadline.timeRemaining(), so we can know how much time that we have before next paint
     */
     // requestIdleCallback give time + paint every 16ms
-  
+  // 2ms
+  // 16.6ms
+  // 2ms 
+  //deadline.timeRemaining 14.6
+  // 2ms
+  // deadline.timeRemaining 12.6
+  // deadline.timeRemaining 0ms
+  // 0ms
+
+  // // 2ms 6 
+  // raf -> 6
+  // ric -> 1 
+  //16.6 = 1/60
+  // 
+
     
     function workLoop(deadline) {
       console.log("workLoop", deadline.timeRemaining())
       let shouldYield = false
       // 16ms
-      while (!shouldYield && i < 10000) {
-        performUnitOfWork(nextUnitOfWork) 
+      while (!shouldYield && i < 100000) {
+        performUnitOfWork(nextUnitOfWork) //node 
 
-        shouldYield = deadline.timeRemaining() < 1
+        shouldYield = deadline.timeRemaining() < 12
       }
       window.requestIdleCallback(workLoop) // => paint lai 1 div
     }
@@ -57,7 +71,7 @@
     // 16ms
 
     function performUnitOfWork(fiber) {
-      console.log(123)
+      console.log(123, i)
       i++
       const container = document.getElementById("root")
       const node = document.createElement("div")

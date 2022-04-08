@@ -46,10 +46,10 @@
 
     We need Babel support here so I include: 
     - <script src="https://unpkg.com/@babel/standalone/babel.min.js">
-    - /** @jsx Hoan.createElement *
+    - /** @jsx Binen.createElement *
     This mean:  hey Babel see that JSX ?? , convert for me type, props, children.
 
-    Let try with testBabel and /** @jsx Hoan.testBabel * first, just simple console.log to see what babel give us
+    Let try with testBabel and /** @jsx Binen.testBabel * first, just simple console.log to see what babel give us
     => every JSX <div> , <span> , <h1> will print out type, props, children in testBabel
 
     Next thing is write createElement , Babel just do 80% of the job, we just need to return to correct format:
@@ -66,7 +66,7 @@
       Now let log out:
 
       const element2 = (
-      <div id="wrapper" classHoan="abc">
+      <div id="wrapper" classBinen="abc">
         <span>
           <h1 title="hello123">hello</h1>
         </span>
@@ -84,7 +84,7 @@
 
       And we done, oh wait attribute "class" not work , why ???
       Because some keyword like class or for are the reserved keyword ( you can read here https://www.geeksforgeeks.org/why-react-uses-classname-over-class-attribute/#:~:text=Explanation%3A%20The%20only%20reason%20behind,className%20instead%20of%20class%20attribute.)
-      so we need to change it. I use classHoan for it, you can change any name you want :D
+      so we need to change it. I use classBinen for it, you can change any name you want :D
       #FYI: Actually undefined was not reserved in old browser,
       so if var undefined = 'something else' the undefined now is 'something else' and make undefined might not work as you expected
       to fix that , use void(0) . var a = undefined same with var a = void(0)
@@ -94,13 +94,14 @@
    
     function testBabel(type, props, ...children) {
       console.log("this is test babel", type, props, ...children)
-      return "hoan"
+      return "Binen"
     }
 
     function createElement(type, props, ...children) {
       // console.log("children", children)
       console.log("createElement", type, props, children)
-
+      // props có 2 loại : children , 2 là attribute 
+      // attribute: class, id, title, ...
       return {
         type,
         props: {
@@ -132,40 +133,47 @@
 
       const isProperty = (key) => key !== "children"
       //debugger
+      // This code is filter property such as title, class, id , ...
       Object.keys(element.props)
         .filter(isProperty)
         .forEach((name) => {
-          if(name ==='classHoan'){
+          if(name ==='classBinen'){
             dom.classList.add(element.props[name])
           }
           dom[name] = element.props[name]
         })
+      // This code is handle children, we do it recursive
       element.props.children.forEach((child) => render(child, dom)) // render (child, dom) h1-> span
       container.appendChild(dom)
     }
+
+    // jsx -> chuyen ra object dum 
     // <div><span><h1></h1></span><div>
     // => div
     // => div <- span
     // => div <- span <- h1
-    const Hoan = {
+    const Binen = {
       createElement,
       render,
       testBabel,
     }
-    // const element = Hoan.createElement(
+    // const element = Binen.createElement(
     //   "div",
     //   { id: "foo" },
-    //   Hoan.createElement("a", null, "bar"),
-    //   Hoan.createElement("b")
+    //   Binen.createElement("a", null, "bar"),
+    //   Binen.createElement("b")
     // )
-    /** @jsx Hoan.createElement */
+    /** @jsx Binen.createElement */
+    // nếu mà thấy jsx thì chạy hàm createElement
     const element2 = (
-      <div id="wrapper" classHoan="abc">
+      <div id="wrapper" classBinen="abc">
         <span>
           <h1 title="hello123">hello</h1>
+          <h3 title='cai nay la prop'>test mot cai abc </h3>
         </span>
       </div>
     )
+    
 
     console.log("element2", element2)
 
@@ -178,45 +186,45 @@
     // console.log("element", element)
     //  const for ....
 
-    const element123 = (
-      <div classHoan="wrapper">
-        <div>div</div>
-        <h1>h1</h1>
-        <span>span</span>
-        <ul>
-          <li>1</li>
-          <li>2</li>
-          <li>3</li>
-        </ul>
-        <table classHoan="table">
-          <thead title="table" id="idTable">
-            <tr>
-              <td>Name</td>
-              <td>year</td>
-              <td>age</td>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Heu</td>
-              <td>123</td>
-              <td>1</td>
-            </tr>
-            <tr>
-              <td>Unu</td>
-              <td>11</td>
-              <td>44</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    )
+    // const element123 = (
+    //   <div classBinen="wrapper">
+    //     <div>div</div>
+    //     <h1>h1</h1>
+    //     <span>span</span>
+    //     <ul>
+    //       <li>1</li>
+    //       <li>2</li>
+    //       <li>3</li>
+    //     </ul>
+    //     <table classBinen="table">
+    //       <thead title="table" id="idTable">
+    //         <tr>
+    //           <td>Name</td>
+    //           <td>year</td>
+    //           <td>age</td>
+    //         </tr>
+    //       </thead>
+    //       <tbody>
+    //         <tr>
+    //           <td>Heu</td>
+    //           <td>123</td>
+    //           <td>1</td>
+    //         </tr>
+    //         <tr>
+    //           <td>Unu</td>
+    //           <td>11</td>
+    //           <td>44</td>
+    //         </tr>
+    //       </tbody>
+    //     </table>
+    //   </div>
+    // )
     // console.log("element2", element123)
     // console.log("element", element)
     const container = document.getElementById("root")
-    // Hoan.render(element123, container)
+    // Binen.render(element123, container)
     //createElement("h1", {}, null)
-    Hoan.render(element2, container)
+    Binen.render(element2, container)
 
     // console.log("element2", <div></div>)
   </script>

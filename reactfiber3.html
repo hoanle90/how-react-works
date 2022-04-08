@@ -117,7 +117,7 @@
     // We already have effect list, we know exactly what fiber node need to update/create/delete , let do it
     function commitRoot() {
       deletions.forEach(commitWork)
-      console.log("nextUnitOfWork AFTER", wipRoot)
+     // console.log("nextUnitOfWork AFTER", wipRoot)
       commitWork(wipRoot.child)
       // after finish committing, the workInProcessRoot become currentRoot
       currentRoot = wipRoot
@@ -175,6 +175,14 @@
     let currentRoot = null
     let deletions = null
 
+
+    /*
+
+    fiber:
+    - ric
+    - fiber , link list 
+
+    */
     /*
      #1
       so basically, this function always run.
@@ -188,7 +196,7 @@
       // while (nextUnitOfWork ... mean still have work to done, so continue to do it
       while (nextUnitOfWork && !shouldYield) {
         nextUnitOfWork = performUnitOfWork(nextUnitOfWork) // return next unit of work ,might be child or sibling ( no parent here, because we go from top to bottom)
-        console.log('nextUnitOfWork', nextUnitOfWork)
+       // console.log('nextUnitOfWork', nextUnitOfWork)
         // check we have enough time or not
         shouldYield = deadline.timeRemaining() < 1
       }
@@ -200,7 +208,11 @@
       requestIdleCallback(workLoop)
     }
 
-    requestIdleCallback(workLoop) // 16ms
+    requestIdleCallback(workLoop) // 16.6ms
+    // break unit of work fire tree 
+    // linklist + requestIdleCallback => giai quyet giat lag
+    // stack -> clear stack 1s -> ve Dom
+
     // fiber tree link list node  UnitOfWork
     // fiberNode
     // nodeA <-> nodeB <-> nodeC <->nodeD
@@ -292,6 +304,8 @@
       } else {
         updateHostComponent(fiber)
       }
+      console.log('fiber', fiber)
+     // debugger
       // keep go to bottom until there is no child
       if (fiber.child) {
         return fiber.child
@@ -375,7 +389,7 @@
         deps: oldHook ? oldHook.deps : deps,
       }
       let oldDeps = hook
-      console.log("hook", hook)
+      //console.log("hook", hook)
       let hasChanged = true
       if (oldDeps) {
         hasChanged = deps.some((d, index) => !Object.is(d, oldDeps[index]))
@@ -389,7 +403,7 @@
       // }
       wipFiber.hooks.push(hook)
       hookIndex++
-      console.log("useEffect", oldHook)
+      //"useEffect", oldHook)
     }
 
     const Hoan = {

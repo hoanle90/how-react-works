@@ -3315,7 +3315,7 @@ var _prodInvariant = _dereq_(112);
 
 var REACT_ELEMENT_TYPE = _dereq_(40);
 
-console.log("_dereq_(22)", _dereq_(22))
+//console.log("_dereq_(22)", _dereq_(22))
 
 var _require = _dereq_(22),
     REACT_COROUTINE_TYPE = _require.REACT_COROUTINE_TYPE,
@@ -11127,7 +11127,8 @@ module.exports = function (config) {
       nextEffect = next;
     }
   }
-
+  // effect -> link list
+  // effectA -> effectB -> effectC
   function commitAllWork(finishedWork) {
     // We keep track of this so that captureError can collect any boundaries
     // that capture an error during the commit phase. The reason these aren't
